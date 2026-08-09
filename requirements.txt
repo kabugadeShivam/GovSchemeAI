@@ -1,0 +1,7 @@
+streamlit==1.61.1
+pandas
+numpy
+scikit-learn
+sentence-transformers
+torch
+requests

@@ -1,0 +1,436 @@
+/* ============================================================
+   GovSchemeAI - Final UI
+   ============================================================ */
+
+:root {
+    --green: #166534;
+    --green-dark: #14532d;
+    --green-light: #dcfce7;
+    --green-soft: #f0fdf4;
+    --text: #172018;
+    --muted: #647067;
+    --border: #dfe7e1;
+    --card: #ffffff;
+    --background: #f7faf8;
+}
+
+
+/* ============================================================
+   GLOBAL
+   ============================================================ */
+
+.stApp {
+    background: var(--background);
+    color: var(--text);
+}
+
+.block-container {
+    max-width: 1200px;
+    padding-top: 2rem;
+    padding-bottom: 4rem;
+}
+
+
+/* ============================================================
+   HEADINGS
+   ============================================================ */
+
+h1 {
+    font-size: 2.5rem !important;
+    font-weight: 750 !important;
+    letter-spacing: -0.03em;
+}
+
+h2 {
+    font-weight: 700 !important;
+}
+
+h3 {
+    font-weight: 700 !important;
+}
+
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+
+section[data-testid="stSidebar"] {
+    background: #ffffff;
+    border-right: 1px solid var(--border);
+}
+
+section[data-testid="stSidebar"] > div {
+    padding-top: 1.5rem;
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px 18px 4px;
+}
+
+.logo-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--green-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+}
+
+.logo-title {
+    font-size: 20px;
+    font-weight: 750;
+    color: var(--green-dark);
+}
+
+.logo-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.sidebar-help {
+    background: var(--green-soft);
+    border: 1px solid #bbf7d0;
+    border-radius: 14px;
+    padding: 15px;
+    margin-top: 20px;
+    font-size: 13px;
+}
+
+.sidebar-help p {
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 0;
+}
+
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.stButton > button {
+    border-radius: 10px;
+    min-height: 44px;
+    font-weight: 650;
+    border: 1px solid var(--border);
+    transition: all 0.15s ease;
+}
+
+.stButton > button:hover {
+    border-color: var(--green);
+    transform: translateY(-1px);
+}
+
+button[kind="primary"] {
+    background: var(--green) !important;
+    color: white !important;
+    border: none !important;
+}
+
+button[kind="primary"]:hover {
+    background: var(--green-dark) !important;
+}
+
+
+/* ============================================================
+   LINKS / PAGE LINKS
+   ============================================================ */
+
+a {
+    color: var(--green);
+}
+
+
+/* ============================================================
+   HERO
+   ============================================================ */
+
+.hero {
+    background: linear-gradient(
+        135deg,
+        #ecfdf5 0%,
+        #f0fdf4 55%,
+        #ffffff 100%
+    );
+
+    border: 1px solid #bbf7d0;
+    border-radius: 24px;
+    padding: 48px;
+    margin-bottom: 30px;
+}
+
+.hero-badge {
+    display: inline-block;
+    background: white;
+    border: 1px solid #bbf7d0;
+    color: var(--green-dark);
+    padding: 7px 13px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 650;
+    margin-bottom: 18px;
+}
+
+.hero h1 {
+    max-width: 750px;
+    margin: 0;
+    font-size: 48px !important;
+    line-height: 1.08;
+}
+
+.hero h1 span {
+    color: var(--green);
+}
+
+.hero p {
+    max-width: 680px;
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1.65;
+    margin-top: 18px;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 26px;
+}
+
+.hero-button {
+    display: inline-block;
+    padding: 12px 20px;
+    border-radius: 10px;
+    text-decoration: none !important;
+    font-weight: 650;
+}
+
+.hero-button.primary {
+    background: var(--green);
+    color: white !important;
+}
+
+.hero-button.secondary {
+    background: white;
+    color: var(--green-dark) !important;
+    border: 1px solid var(--border);
+}
+
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+
+.action-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 24px;
+    min-height: 190px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.035);
+}
+
+.action-card:hover {
+    border-color: #86efac;
+}
+
+.action-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--green-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    margin-bottom: 15px;
+}
+
+.action-card h3 {
+    margin-bottom: 8px;
+}
+
+.action-card p {
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+
+/* ============================================================
+   SECTION TITLES
+   ============================================================ */
+
+.section-title {
+    font-size: 24px;
+    font-weight: 750;
+    margin-top: 35px;
+    margin-bottom: 5px;
+}
+
+.section-subtitle {
+    color: var(--muted);
+    margin-bottom: 20px;
+}
+
+
+/* ============================================================
+   CATEGORY CARDS
+   ============================================================ */
+
+.category-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    min-height: 130px;
+}
+
+.category-card .icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.category-card strong {
+    display: block;
+}
+
+.category-card span {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+
+/* ============================================================
+   METRICS
+   ============================================================ */
+
+[data-testid="stMetric"] {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 15px;
+}
+
+[data-testid="stMetricLabel"] {
+    color: var(--muted);
+}
+
+
+/* ============================================================
+   INPUTS
+   ============================================================ */
+
+div[data-baseweb="select"] > div,
+div[data-baseweb="input"] > div {
+    border-radius: 10px;
+}
+
+.stTextInput input,
+.stNumberInput input,
+.stChatInput textarea {
+    border-radius: 10px;
+}
+
+
+/* ============================================================
+   CHAT
+   ============================================================ */
+
+[data-testid="stChatMessage"] {
+    border-radius: 16px;
+}
+
+[data-testid="stChatMessageContent"] {
+    line-height: 1.65;
+}
+
+[data-testid="stChatInput"] {
+    border-radius: 14px;
+}
+
+
+/* ============================================================
+   EXPANDERS
+   ============================================================ */
+
+.streamlit-expanderHeader {
+    border-radius: 12px;
+    font-weight: 650;
+}
+
+details {
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    background: white;
+}
+
+
+/* ============================================================
+   INFO / SUCCESS / WARNING
+   ============================================================ */
+
+div[data-testid="stAlert"] {
+    border-radius: 12px;
+}
+
+
+/* ============================================================
+   DATAFRAME
+   ============================================================ */
+
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+.footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 30px 10px 10px 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 45px;
+}
+
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 768px) {
+
+    .block-container {
+        padding: 1rem;
+    }
+
+    .hero {
+        padding: 28px 22px;
+        border-radius: 18px;
+    }
+
+    .hero h1 {
+        font-size: 34px !important;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+    }
+
+    .hero-button {
+        text-align: center;
+    }
+
+    .action-card {
+        margin-bottom: 12px;
+    }
+}
