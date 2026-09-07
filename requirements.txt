@@ -3,10 +3,10 @@ pandas
 numpy
 scikit-learn
 sentence-transformers
-torch
 requests
 langchain
 langchain-community
 langchain-chroma
 langchain-huggingface
 chromadb
+groq
