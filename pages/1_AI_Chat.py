@@ -14,8 +14,7 @@ except Exception as e:
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_MODEL = "gemma3:4b"
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.1-8b-instant"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent"
 
 if "messages" not in st.session_state:
     st.session_state.messages = [{
@@ -85,13 +84,23 @@ def build_context(results):
     return "\n\n---\n\n".join(context), cards
 
 
+def get_gemini_api_key():
+    try:
+        key = st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        key = ""
+    return key or os.getenv("GEMINI_API_KEY", "")
+
+
 def generate_cloud_answer(question, context):
-    api_key = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY", ""))
+    api_key = get_gemini_api_key()
     if not api_key:
         return None
+
     prompt = f"""You are GovSchemeAI, a helpful Indian government scheme assistant.
-Answer ONLY from the government scheme information below. Do not invent facts.
+Answer ONLY from the government scheme information below. Do not invent facts or eligibility rules.
 Use simple language. Mention the most relevant schemes first and include eligibility, benefit, subsidy, documents and where to apply when available.
+If the retrieved information does not answer part of the question, clearly say that the database does not provide that information.
 
 Question: {question}
 
@@ -99,14 +108,25 @@ Government scheme information:
 {context}
 
 End with: Please verify the latest details on the official government website before applying."""
+
     response = requests.post(
-        GROQ_URL,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": GROQ_MODEL, "messages": [{"role": "user", "content": prompt}], "temperature": 0.2},
+        GEMINI_URL,
+        params={"key": api_key},
+        headers={"Content-Type": "application/json"},
+        json={
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 1200
+            }
+        },
         timeout=90
     )
     response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"].strip()
+    data = response.json()
+    return data["candidates"][0]["content"]["parts"][0]["text"].strip()
 
 
 def generate_local_answer(question, context):
@@ -152,7 +172,7 @@ if question:
                 context, cards = build_context(results)
                 answer = None
 
-                # Streamlit Cloud: use Groq when GROQ_API_KEY is configured.
+                # Streamlit Cloud: use Gemini when GEMINI_API_KEY is configured.
                 # Local development: use Ollama when it is running.
                 try:
                     answer = generate_cloud_answer(question, context)
