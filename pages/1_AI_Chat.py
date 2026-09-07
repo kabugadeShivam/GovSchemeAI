@@ -1,32 +1,9 @@
-import streamlit as st
-import sys
 import os
+import re
 import requests
+import streamlit as st
 
-# ============================================================
-# PAGE CONFIG
-# ============================================================
-
-st.set_page_config(
-    page_title="AI Assistant | GovSchemeAI",
-    page_icon="🤖",
-    layout="wide"
-)
-
-# ============================================================
-# PROJECT PATH
-# ============================================================
-
-BASE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-)
-
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
-# ============================================================
-# RAG IMPORT
-# ============================================================
+st.set_page_config(page_title="AI Assistant | GovSchemeAI", page_icon="🤖", layout="wide")
 
 try:
     from rag.retriever import search_schemes, filter_results
@@ -35,675 +12,190 @@ except Exception as e:
     st.code(str(e))
     st.stop()
 
-# ============================================================
-# OLLAMA
-# ============================================================
-
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-MODEL_NAME = "gemma3:4b"
-
-
-# ============================================================
-# SESSION STATE
-# ============================================================
+OLLAMA_MODEL = "gemma3:4b"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 if "messages" not in st.session_state:
-
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                "Namaste! 👋 I am GovSchemeAI.\n\n"
-                "Ask me about government schemes, eligibility, "
-                "subsidies, documents or where to apply."
-            )
-        }
-    ]
-
-
-# ============================================================
-# HEADER
-# ============================================================
+    st.session_state.messages = [{
+        "role": "assistant",
+        "content": "Namaste! 👋 Ask me about government schemes, eligibility, subsidies, documents or where to apply."
+    }]
 
 st.title("🤖 GovSchemeAI Assistant")
-
-st.write(
-    "Ask questions about government schemes in simple language."
-)
-
+st.write("Ask questions about government schemes in simple language.")
 st.divider()
-
-
-# ============================================================
-# EXAMPLE QUESTIONS
-# ============================================================
-
-st.markdown("### 💡 Try asking")
 
 q1, q2, q3, q4 = st.columns(4)
-
-with q1:
-
-    if st.button(
-        "🌾 Irrigation schemes",
-        use_container_width=True
-    ):
-
-        st.session_state.pending_question = (
-            "What irrigation schemes are available "
-            "for farmers in Maharashtra?"
-        )
-
-
-with q2:
-
-    if st.button(
-        "💰 Subsidy schemes",
-        use_container_width=True
-    ):
-
-        st.session_state.pending_question = (
-            "What agricultural subsidy schemes "
-            "are available?"
-        )
-
-
-with q3:
-
-    if st.button(
-        "📄 Required documents",
-        use_container_width=True
-    ):
-
-        st.session_state.pending_question = (
-            "What documents are generally required "
-            "to apply for agricultural schemes?"
-        )
-
-
-with q4:
-
-    if st.button(
-        "👨‍🌾 Farmer schemes",
-        use_container_width=True
-    ):
-
-        st.session_state.pending_question = (
-            "Which government schemes can benefit farmers?"
-        )
-
+examples = [
+    "What irrigation schemes are available for farmers in Maharashtra?",
+    "What agricultural subsidy schemes are available?",
+    "What documents are generally required to apply for agricultural schemes?",
+    "Which government schemes can benefit farmers?"
+]
+for col, label, question in zip(
+    [q1, q2, q3, q4],
+    ["🌾 Irrigation schemes", "💰 Subsidy schemes", "📄 Required documents", "👨‍🌾 Farmer schemes"],
+    examples
+):
+    with col:
+        if st.button(label, use_container_width=True):
+            st.session_state.pending_question = question
 
 st.divider()
-
-
-# ============================================================
-# DISPLAY CHAT HISTORY
-# ============================================================
-
 for message in st.session_state.messages:
-
     with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-        st.markdown(
-            message["content"]
-        )
-
-
-# ============================================================
-# QUESTION
-# ============================================================
-
-question = st.chat_input(
-    "Ask about government schemes..."
-)
+question = st.chat_input("Ask about government schemes...")
+if st.session_state.get("pending_question"):
+    question = st.session_state.pop("pending_question")
 
 
-# Handle example button
-
-if (
-    "pending_question" in st.session_state
-    and st.session_state.pending_question
-):
-
-    question = st.session_state.pending_question
-
-    st.session_state.pending_question = None
+def extract_field(text, field_names):
+    for field in field_names:
+        match = re.search(rf"{re.escape(field)}:\s*(.*)", text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return "Not specified"
 
 
-# ============================================================
-# PROCESS QUESTION
-# ============================================================
-
-if question:
-
-    # --------------------------------------------------------
-    # USER MESSAGE
-    # --------------------------------------------------------
-
-    st.session_state.messages.append(
-        {
-            "role": "user",
-            "content": question
+def build_context(results):
+    context = []
+    cards = []
+    for document, score in results:
+        text = document.page_content
+        card = {
+            "name": extract_field(text, ["Scheme Name"]),
+            "id": extract_field(text, ["Scheme ID"]),
+            "state": extract_field(text, ["State"]),
+            "district": extract_field(text, ["District"]),
+            "category": extract_field(text, ["Category"]),
+            "crop": extract_field(text, ["Crop"]),
+            "eligibility": extract_field(text, ["Eligibility"]),
+            "benefit": extract_field(text, ["Benefits", "Benefit"]),
+            "subsidy": extract_field(text, ["Subsidy"]),
+            "documents": extract_field(text, ["Required Documents"]),
+            "apply_at": extract_field(text, ["Apply At"]),
+            "website": extract_field(text, ["Official Website"]),
         }
-    )
-
-    with st.chat_message("user"):
-
-        st.markdown(question)
-
-
-    # --------------------------------------------------------
-    # ASSISTANT
-    # --------------------------------------------------------
-
-    with st.chat_message("assistant"):
-
-        with st.spinner(
-            "🔎 Searching government schemes..."
-        ):
-
-            try:
-
-                # ====================================================
-                # RAG SEARCH
-                # ====================================================
-
-                results = search_schemes(
-                    question
-                )
-
-                # ====================================================
-                # FILTER RESULTS
-                # ====================================================
-
-                try:
-
-                    results = filter_results(
-                        results,
-                        question
-                    )
-
-                except TypeError:
-
-                    # If your current filter_results
-                    # accepts only one argument
-                    pass
-
-
-                # ====================================================
-                # CHECK RESULTS
-                # ====================================================
-
-                if not results:
-
-                    answer = (
-                        "I couldn't find a matching scheme "
-                        "in the current government scheme database.\n\n"
-                        "Try mentioning your **state, district, "
-                        "crop or requirement**."
-                    )
-
-                    st.markdown(answer)
-
-                    st.session_state.messages.append(
-                        {
-                            "role": "assistant",
-                            "content": answer
-                        }
-                    )
-
-                    st.stop()
-
-
-                # ====================================================
-                # PREPARE CONTEXT
-                # ====================================================
-
-                context_parts = []
-
-                scheme_cards = []
-
-
-                for item in results:
-
-                    # ------------------------------------------------
-                    # HANDLE DIFFERENT RESULT FORMATS
-                    # ------------------------------------------------
-
-                    if isinstance(item, tuple):
-
-                        if len(item) >= 2:
-
-                            score = item[0]
-                            scheme = item[1]
-
-                        else:
-
-                            score = 0
-                            scheme = item[0]
-
-                    elif isinstance(item, dict):
-
-                        score = item.get(
-                            "score",
-                            0
-                        )
-
-                        scheme = item
-
-                    else:
-
-                        continue
-
-
-                    # ------------------------------------------------
-                    # NORMALIZE SCHEME
-                    # ------------------------------------------------
-
-                    if hasattr(
-                        scheme,
-                        "get"
-                    ):
-
-                        name = scheme.get(
-                            "Scheme_Name",
-                            scheme.get(
-                                "scheme_name",
-                                "Unknown scheme"
-                            )
-                        )
-
-                        scheme_id = scheme.get(
-                            "Scheme_ID",
-                            scheme.get(
-                                "scheme_id",
-                                ""
-                            )
-                        )
-
-                        state = scheme.get(
-                            "State",
-                            scheme.get(
-                                "state",
-                                ""
-                            )
-                        )
-
-                        district = scheme.get(
-                            "District",
-                            scheme.get(
-                                "district",
-                                ""
-                            )
-                        )
-
-                        category = scheme.get(
-                            "Category",
-                            scheme.get(
-                                "category",
-                                ""
-                            )
-                        )
-
-                        crop = scheme.get(
-                            "Crop",
-                            scheme.get(
-                                "crop",
-                                ""
-                            )
-                        )
-
-                        eligibility = scheme.get(
-                            "Eligibility",
-                            ""
-                        )
-
-                        benefit = scheme.get(
-                            "Benefit",
-                            scheme.get(
-                                "Benefits",
-                                ""
-                            )
-                        )
-
-                        subsidy = scheme.get(
-                            "Subsidy",
-                            ""
-                        )
-
-                        documents = scheme.get(
-                            "Required_Documents",
-                            ""
-                        )
-
-                        apply_at = scheme.get(
-                            "Apply_At",
-                            ""
-                        )
-
-                        website = scheme.get(
-                            "Official_Website",
-                            ""
-                        )
-
-                    else:
-
-                        continue
-
-
-                    # ------------------------------------------------
-                    # CONTEXT
-                    # ------------------------------------------------
-
-                    context_parts.append(
-                        f"""
-SCHEME:
-{name}
-
-Scheme ID:
-{scheme_id}
-
-State:
-{state}
-
-District:
-{district}
-
-Category:
-{category}
-
-Crop:
-{crop}
-
-Eligibility:
-{eligibility}
-
-Benefit:
-{benefit}
-
-Subsidy:
-{subsidy}
-
-Required Documents:
-{documents}
-
-Apply At:
-{apply_at}
-
-Official Website:
-{website}
-"""
-                    )
-
-
-                    scheme_cards.append(
-                        {
-                            "name": name,
-                            "id": scheme_id,
-                            "state": state,
-                            "district": district,
-                            "category": category,
-                            "crop": crop,
-                            "eligibility": eligibility,
-                            "benefit": benefit,
-                            "subsidy": subsidy,
-                            "documents": documents,
-                            "apply_at": apply_at,
-                            "website": website
-                        }
-                    )
-
-
-                context = "\n".join(
-                    context_parts
-                )
-
-
-                # ====================================================
-                # PROMPT
-                # ====================================================
-
-                prompt = f"""
-You are GovSchemeAI, a helpful Indian government scheme assistant.
-
-Answer the farmer's question using ONLY the government scheme
-information provided below.
-
-Do not invent schemes, benefits, eligibility conditions,
-subsidies, documents or websites.
-
-If the information is not available, clearly say so.
-
-Use simple language suitable for a farmer.
-
-Question:
-{question}
+        cards.append(card)
+        context.append(text)
+    return "\n\n---\n\n".join(context), cards
+
+
+def generate_cloud_answer(question, context):
+    api_key = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY", ""))
+    if not api_key:
+        return None
+    prompt = f"""You are GovSchemeAI, a helpful Indian government scheme assistant.
+Answer ONLY from the government scheme information below. Do not invent facts.
+Use simple language. Mention the most relevant schemes first and include eligibility, benefit, subsidy, documents and where to apply when available.
+
+Question: {question}
 
 Government scheme information:
 {context}
 
-Instructions:
-
-1. Answer the question directly.
-2. Mention the most relevant schemes first.
-3. For each relevant scheme mention:
-   - Scheme name
-   - Eligibility
-   - Benefit
-   - Subsidy
-   - Documents
-   - Where to apply
-4. Do not include unrelated schemes.
-5. Do not make assumptions.
-6. Keep the answer concise and readable.
-7. End with:
-"Please verify the latest details on the official government website before applying."
-"""
+End with: Please verify the latest details on the official government website before applying."""
+    response = requests.post(
+        GROQ_URL,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": GROQ_MODEL, "messages": [{"role": "user", "content": prompt}], "temperature": 0.2},
+        timeout=90
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"].strip()
 
 
-                # ====================================================
-                # OLLAMA REQUEST
-                # ====================================================
-
-                response = requests.post(
-                    OLLAMA_URL,
-                    json={
-                        "model": MODEL_NAME,
-                        "prompt": prompt,
-                        "stream": False
-                    },
-                    timeout=180
-                )
+def generate_local_answer(question, context):
+    try:
+        response = requests.post(
+            OLLAMA_URL,
+            json={"model": OLLAMA_MODEL, "prompt": f"Answer using only this data.\n\nQuestion: {question}\n\nData:\n{context}", "stream": False},
+            timeout=90
+        )
+        response.raise_for_status()
+        return response.json().get("response", "").strip()
+    except Exception:
+        return None
 
 
-                response.raise_for_status()
+def fallback_answer(cards):
+    lines = ["### Matching government schemes", ""]
+    for card in cards[:5]:
+        lines.append(f"**{card['name']}**")
+        lines.append(f"- Eligibility: {card['eligibility']}")
+        lines.append(f"- Benefit: {card['benefit']}")
+        lines.append(f"- Subsidy: {card['subsidy']}")
+        lines.append(f"- Apply at: {card['apply_at']}")
+        lines.append("")
+    lines.append("Please verify the latest details on the official government website before applying.")
+    return "\n".join(lines)
 
 
-                data = response.json()
+if question:
+    st.session_state.messages.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.markdown(question)
 
+    with st.chat_message("assistant"):
+        try:
+            with st.spinner("🔎 Searching government schemes..."):
+                results = filter_results(search_schemes(question, k=8), question)
 
-                answer = data.get(
-                    "response",
-                    ""
-                ).strip()
+            if not results:
+                answer = "I couldn't find a matching scheme in the current database. Try mentioning your state, district, crop or requirement."
+                st.warning(answer)
+            else:
+                context, cards = build_context(results)
+                answer = None
 
+                # Streamlit Cloud: use Groq when GROQ_API_KEY is configured.
+                # Local development: use Ollama when it is running.
+                try:
+                    answer = generate_cloud_answer(question, context)
+                except Exception:
+                    answer = None
 
                 if not answer:
+                    answer = generate_local_answer(question, context)
 
-                    answer = (
-                        "I could not generate an answer. "
-                        "Please try again."
-                    )
-
-
-                # ====================================================
-                # SHOW ANSWER
-                # ====================================================
+                if not answer:
+                    answer = fallback_answer(cards)
+                    st.info("AI model is not configured, so GovSchemeAI is showing the verified scheme information retrieved from its database.")
 
                 st.markdown(answer)
-
-
-                # ====================================================
-                # SOURCE SCHEMES
-                # ====================================================
-
                 st.divider()
+                st.markdown("### 📚 Sources from GovSchemeAI database")
 
-                st.markdown(
-                    "### 📚 Sources from GovSchemeAI database"
-                )
-
-
-                for card in scheme_cards:
-
-                    with st.expander(
-                        f"📋 {card['name']}"
-                    ):
-
-                        st.caption(
-                            f"Scheme ID: {card['id']}"
-                        )
-
+                for card in cards:
+                    with st.expander(f"📋 {card['name']}"):
+                        st.caption(f"Scheme ID: {card['id']}")
                         c1, c2 = st.columns(2)
-
-
                         with c1:
-
-                            st.markdown(
-                                f"**📍 Location**  \n"
-                                f"{card['state']} — "
-                                f"{card['district']}"
-                            )
-
-                            st.markdown(
-                                f"**🌾 Crop**  \n"
-                                f"{card['crop']}"
-                            )
-
-                            st.markdown(
-                                f"**🏷️ Category**  \n"
-                                f"{card['category']}"
-                            )
-
-
+                            st.markdown(f"**📍 Location**  \n{card['state']} — {card['district']}")
+                            st.markdown(f"**🌾 Crop**  \n{card['crop']}")
+                            st.markdown(f"**🏷️ Category**  \n{card['category']}")
                         with c2:
+                            st.markdown(f"**💰 Benefit**  \n{card['benefit']}")
+                            st.markdown(f"**💵 Subsidy**  \n{card['subsidy']}")
+                            st.markdown(f"**🏢 Apply At**  \n{card['apply_at']}")
+                        st.markdown(f"**📄 Documents:** {card['documents']}")
+                        if card["website"].startswith("http"):
+                            st.link_button("🌐 Official Website", card["website"])
 
-                            st.markdown(
-                                f"**💰 Benefit**  \n"
-                                f"{card['benefit']}"
-                            )
+            st.session_state.messages.append({"role": "assistant", "content": answer})
 
-                            st.markdown(
-                                f"**💵 Subsidy**  \n"
-                                f"{card['subsidy']}"
-                            )
-
-                            st.markdown(
-                                f"**🏢 Apply At**  \n"
-                                f"{card['apply_at']}"
-                            )
-
-
-                        if card["documents"]:
-
-                            st.markdown(
-                                f"**📄 Documents:** "
-                                f"{card['documents']}"
-                            )
-
-
-                        website = str(
-                            card["website"]
-                        ).strip()
-
-
-                        # Extract URL from markdown
-                        if website.startswith("["):
-
-                            match = __import__(
-                                "re"
-                            ).search(
-                                r"\((.*?)\)",
-                                website
-                            )
-
-                            if match:
-
-                                website = match.group(1)
-
-
-                        if website.startswith(
-                            "http"
-                        ):
-
-                            st.link_button(
-                                "🌐 Official Website",
-                                website
-                            )
-
-
-                # ====================================================
-                # SAVE ASSISTANT MESSAGE
-                # ====================================================
-
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": answer
-                    }
-                )
-
-
-            except requests.exceptions.ConnectionError:
-
-                error_message = (
-                    "❌ I can't connect to the local AI model.\n\n"
-                    "Make sure Ollama is running and "
-                    "`gemma3:4b` is available."
-                )
-
-                st.error(error_message)
-
-
-            except requests.exceptions.Timeout:
-
-                st.error(
-                    "⏳ The AI model took too long to respond. "
-                    "Please try the question again."
-                )
-
-
-            except Exception as e:
-
-                st.error(
-                    "Something went wrong while processing "
-                    "your question."
-                )
-
-                st.code(
-                    str(e)
-                )
-
-
-# ============================================================
-# CLEAR CHAT
-# ============================================================
+        except Exception as e:
+            st.error("Something went wrong while processing your question.")
+            st.code(str(e))
 
 st.divider()
-
-if st.button(
-    "🗑️ Clear conversation"
-):
-
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                "Namaste! 👋 I am GovSchemeAI.\n\n"
-                "Ask me about government schemes, eligibility, "
-                "subsidies, documents or where to apply."
-            )
-        }
-    ]
-
+if st.button("🗑️ Clear conversation"):
+    st.session_state.messages = [{
+        "role": "assistant",
+        "content": "Namaste! 👋 Ask me about government schemes, eligibility, subsidies, documents or where to apply."
+    }]
     st.rerun()
